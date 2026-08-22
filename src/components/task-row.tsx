@@ -20,11 +20,13 @@ export function TaskRow({
   timezone,
   onChanged,
   maxTitleLength,
+  compact = false,
 }: {
   item: WorkItemWithOverlay;
   timezone: string;
   onChanged: () => void;
   maxTitleLength?: number;
+  compact?: boolean;
 }) {
   async function complete() {
     await fetch(`/api/tasks/${item.id}`, {
@@ -48,7 +50,12 @@ export function TaskRow({
     maxTitleLength !== undefined ? truncateText(item.title, maxTitleLength) : item.title;
 
   return (
-    <div className="group flex w-full items-start gap-3 rounded-2xl bg-muted/40 px-3 py-2.5">
+    <div
+      className={cn(
+        "group flex w-full min-w-0 items-start overflow-hidden rounded-2xl bg-muted/40 px-3 py-2.5",
+        compact ? "gap-2" : "gap-3",
+      )}
+    >
       {isManual ? (
         <button
           type="button"
@@ -69,26 +76,35 @@ export function TaskRow({
         </span>
       )}
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <p className="truncate text-sm font-medium" title={item.title}>{displayTitle}</p>
-        <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] tracking-wide uppercase",
-              priorityTone[item.priority] ?? priorityTone.none,
-            )}
-          >
-            {item.priority}
-          </span>
-          <span className="min-w-0 truncate">
-            {item.source === "manual" ? "Manual" : item.source}
-            {item.dueAt ? ` · due ${formatDateTime(item.dueAt, timezone)}` : ""}
-            {waiting ? ` · waiting on ${waiting}` : ""}
-          </span>
-        </div>
+        {!compact ? (
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] tracking-wide uppercase",
+                priorityTone[item.priority] ?? priorityTone.none,
+              )}
+            >
+              {item.priority}
+            </span>
+            <span className="min-w-0 truncate">
+              {item.source === "manual" ? "Manual" : item.source}
+              {item.dueAt ? ` · due ${formatDateTime(item.dueAt, timezone)}` : ""}
+              {waiting ? ` · waiting on ${waiting}` : ""}
+            </span>
+          </div>
+        ) : null}
       </div>
 
-      <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-60 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div
+        className={cn(
+          "mt-0.5 flex shrink-0 items-center gap-1",
+          compact
+            ? "opacity-100"
+            : "opacity-60 transition-opacity group-hover:opacity-100 focus-within:opacity-100",
+        )}
+      >
         <TaskForm item={item} triggerLabel="Edit task" onSaved={onChanged} />
         {isManual ? (
           <button

@@ -23,13 +23,13 @@ export function AppShell({
         Skip to content
       </a>
       <AppSidebar email={email} />
-      <SidebarInset className="bg-surface">
+      <SidebarInset className="min-w-0 overflow-x-hidden bg-surface">
         <div className="px-2 pt-2 sm:px-3">
           <SidebarTrigger />
         </div>
         <main
           id="main"
-          className="mx-auto w-full max-w-350 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-0"
+          className="@container mx-auto min-w-0 w-full max-w-350 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-0"
         >
           {children}
         </main>

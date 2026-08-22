@@ -24,7 +24,7 @@ import { formatTime, reasonLabel } from "@/lib/format";
 import { useDashboard } from "@/lib/use-dashboard";
 import { cn } from "@/lib/utils";
 
-const DASHBOARD_TASK_TITLE_MAX = 48;
+const DASHBOARD_TASK_TITLE_MAX = 32;
 
 export function DashboardView({
   email,
@@ -99,8 +99,8 @@ export function DashboardView({
   const next = data?.recommendation[0] ?? null;
 
   return (
-    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="grid content-start gap-3">
+    <div className="grid min-w-0 gap-3 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
+      <div className="grid min-w-0 content-start gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-balance">
@@ -253,10 +253,10 @@ export function DashboardView({
           </div>
         </Panel>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <Panel>
+        <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Panel className="min-w-0">
             <PanelHeader title="Attention" subtitle="Overdue, due today, starting soon" />
-            <div className="grid w-full gap-2">
+            <div className="grid w-full min-w-0 gap-2">
               {filtered.attention.length === 0 ? (
                 <EmptyHint>Nothing needs immediate attention.</EmptyHint>
               ) : (
@@ -264,7 +264,7 @@ export function DashboardView({
                   <div
                     key={`${item.reason}-${item.id}`}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5",
+                      "flex w-full min-w-0 items-center gap-2 overflow-hidden rounded-2xl bg-muted/40 px-3 py-2.5",
                       query !== deferredQuery && "opacity-70",
                     )}
                   >
@@ -303,7 +303,7 @@ export function DashboardView({
             </div>
           </Panel>
 
-          <Panel className="w-full min-w-0">
+          <Panel className="min-w-0">
             <PanelHeader
               title="Pending"
               subtitle="Manual tasks, Jira, Zoho Desk, and GitHub."
@@ -336,7 +336,7 @@ export function DashboardView({
                 <Plus className="size-4" aria-hidden="true" />
               </button>
             </form>
-            <div className="grid w-full gap-2">
+            <div className="grid w-full min-w-0 gap-2">
               {filtered.pending.length === 0 ? (
                 <EmptyHint>No open tasks.</EmptyHint>
               ) : (
@@ -349,6 +349,7 @@ export function DashboardView({
                       timezone={data!.timezone}
                       onChanged={reload}
                       maxTitleLength={DASHBOARD_TASK_TITLE_MAX}
+                      compact
                     />
                   ))
               )}
@@ -357,7 +358,7 @@ export function DashboardView({
         </div>
       </div>
 
-      <aside className="grid content-start gap-3">
+      <aside className="grid min-w-0 content-start gap-3">
         <Panel>
           <PanelHeader title="Waiting on" subtitle="People and systems blocking you" />
           {filtered.waitingFor.length === 0 ? (
