@@ -13,11 +13,13 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { DayStrip } from "@/components/day-strip";
 import { EmptyHint, Panel, PanelHeader } from "@/components/panel";
 import { TaskForm } from "@/components/task-form-lazy";
 import { TaskRow } from "@/components/task-row";
+import type { BriefingResponse } from "@/domain/agent/api";
 import type { AttentionItem, DashboardSnapshot, WorkItemWithOverlay } from "@/domain/types";
 import { displayName, formatDuration, formatLongDate, greeting, initials, truncateText } from "@/lib/display";
 import { formatTime, reasonLabel } from "@/lib/format";
@@ -38,6 +40,9 @@ export function DashboardView({
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [isPending, startTransition] = useTransition();
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [briefingBusy, setBriefingBusy] = useState(false);
+  const [briefingError, setBriefingError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!data) return { pending: [], waitingFor: [], attention: [] };
@@ -82,6 +87,25 @@ export function DashboardView({
       }
       await reload();
     });
+  }
+
+  async function generateBriefing() {
+    setBriefingBusy(true);
+    setBriefingError(null);
+    try {
+      const response = await fetch("/api/briefing?provider=gemini");
+      const body = (await response.json()) as BriefingResponse | { error?: string };
+      if (!response.ok) {
+        const errBody = body as { error?: string };
+        throw new Error(errBody.error ?? "No se pudo generar el briefing.");
+      }
+      setBriefing((body as BriefingResponse).narrative);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error generando el briefing.";
+      setBriefingError(message);
+    } finally {
+      setBriefingBusy(false);
+    }
   }
 
   if (loading) {
@@ -359,6 +383,44 @@ export function DashboardView({
       </div>
 
       <aside className="grid min-w-0 content-start gap-3">
+        <Panel>
+          <PanelHeader
+            title="Briefing del día"
+            subtitle="Resumen con Gemini de tu snapshot actual"
+            trailing={
+              <button
+                type="button"
+                onClick={() => void generateBriefing()}
+                disabled={briefingBusy}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand px-3 text-xs font-semibold text-brand-foreground transition-[filter] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none disabled:opacity-60"
+              >
+                <Sparkles
+                  aria-hidden="true"
+                  className={cn(
+                    "size-3.5",
+                    briefingBusy && "animate-pulse motion-reduce:animate-none",
+                  )}
+                />
+                {briefingBusy ? "Generando…" : briefing ? "Regenerar" : "Generar"}
+              </button>
+            }
+          />
+          {briefingError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {briefingError}
+            </p>
+          ) : briefing ? (
+            <div className="rounded-2xl bg-muted/40 px-3.5 py-3 text-sm leading-6 whitespace-pre-wrap text-foreground">
+              {briefing}
+            </div>
+          ) : (
+            <EmptyHint>
+              Pulsa Generar para un resumen en español de atención, pendientes, agenda y siguiente
+              mejor tarea. Requiere GEMINI_API_KEY en el servidor.
+            </EmptyHint>
+          )}
+        </Panel>
+
         <Panel>
           <PanelHeader title="Waiting on" subtitle="People and systems blocking you" />
           {filtered.waitingFor.length === 0 ? (

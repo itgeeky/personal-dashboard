@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { eventsOnLocalDay, freeBlocks, workWindow } from "@/domain/calendar";
-import type { CalendarEvent } from "@/domain/types";
+import {
+  endOfLocalDay,
+  eventsOnLocalDay,
+  freeBlocks,
+  startOfLocalDay,
+  workWindow,
+} from "@/domain/calendar";
+import type { CalendarEvent, TimeBlock } from "@/domain/types";
 import { toCalendarEvent, type CalendarEventRow } from "@/lib/db/types";
 import type { NormalizedCalendarEvent } from "@/server/connectors/types";
 
@@ -57,4 +63,56 @@ export function agendaForDay(events: CalendarEvent[], now: Date, timeZone: strin
   }));
   const free = freeBlocks(busy, window.start, window.end);
   return { events: dayEvents, busy, free };
+}
+
+export function eventsInLocalRange(
+  events: CalendarEvent[],
+  rangeStart: Date,
+  rangeEnd: Date,
+  timeZone: string,
+): CalendarEvent[] {
+  const start = startOfLocalDay(rangeStart, timeZone).getTime();
+  const end = endOfLocalDay(rangeEnd, timeZone).getTime();
+  return events
+    .filter((event) => {
+      const eventStart = new Date(event.startAt).getTime();
+      const eventEnd = new Date(event.endAt).getTime();
+      return eventStart < end && eventEnd > start;
+    })
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+}
+
+export function agendaForRange(
+  events: CalendarEvent[],
+  rangeStart: Date,
+  rangeEnd: Date,
+  timeZone: string,
+) {
+  const days: Array<{
+    date: string;
+    events: CalendarEvent[];
+    busy: TimeBlock[];
+    free: TimeBlock[];
+  }> = [];
+
+  let cursor = startOfLocalDay(rangeStart, timeZone);
+  const end = endOfLocalDay(rangeEnd, timeZone);
+
+  while (cursor.getTime() <= end.getTime()) {
+    const agenda = agendaForDay(events, cursor, timeZone);
+    days.push({
+      date: cursor.toISOString(),
+      events: agenda.events,
+      busy: agenda.busy,
+      free: agenda.free,
+    });
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  return {
+    timezone: timeZone,
+    rangeStart: startOfLocalDay(rangeStart, timeZone).toISOString(),
+    rangeEnd: endOfLocalDay(rangeEnd, timeZone).toISOString(),
+    days,
+  };
 }

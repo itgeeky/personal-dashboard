@@ -34,19 +34,12 @@ const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 function readSidebarCookie(defaultOpen: boolean): boolean {
-  const hasDocument = typeof document !== "undefined"
-  // #region agent log
-  if (hasDocument) {
-    const match = document.cookie.match(
-      new RegExp(`(?:^|; )${SIDEBAR_COOKIE_NAME}=([^;]*)`)
-    )
-    const result = !match ? defaultOpen : match[1] === "true"
-    fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',location:'sidebar.tsx:readSidebarCookie',message:'cookie read on client',data:{hasDocument,defaultOpen,cookieRaw:match?.[1]??null,result},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    if (!match) return defaultOpen
-    return match[1] === "true"
-  }
-  // #endregion
-  return defaultOpen
+  if (typeof document === "undefined") return defaultOpen
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${SIDEBAR_COOKIE_NAME}=([^;]*)`)
+  )
+  if (!match) return defaultOpen
+  return match[1] === "true"
 }
 
 type SidebarContextProps = {
@@ -90,17 +83,8 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
 
-  // #region agent log
-  const isServer = typeof window === "undefined"
-  fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',runId:'post-fix',location:'sidebar.tsx:SidebarProvider',message:'provider render',data:{isServer,defaultOpen,_open,openProp,isMobile,state:_open?'expanded':'collapsed'},timestamp:Date.now(),hypothesisId:'H1-H2'})}).catch(()=>{});
-  // #endregion
-
   React.useEffect(() => {
-    const cookieOpen = readSidebarCookie(defaultOpen)
-    // #region agent log
-    fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',location:'sidebar.tsx:SidebarProvider:useEffect',message:'post-mount cookie sync',data:{defaultOpen,cookieOpen,currentOpen:_open},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
-    _setOpen(cookieOpen)
+    _setOpen(readSidebarCookie(defaultOpen))
   }, [defaultOpen])
   const open = openProp ?? _open
   const setOpen = React.useCallback(
@@ -193,12 +177,6 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
-
-  // #region agent log
-  if (typeof window !== "undefined") {
-    fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',location:'sidebar.tsx:Sidebar',message:'sidebar render',data:{isMobile,state,collapsible,dataCollapsible:state==='collapsed'?collapsible:''},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-  }
-  // #endregion
 
   if (collapsible === "none") {
     return (
