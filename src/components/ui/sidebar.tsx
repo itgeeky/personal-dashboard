@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
+import { SIDEBAR_COOKIE_NAME } from "@/lib/sidebar-state"
+
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -33,12 +34,19 @@ const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 function readSidebarCookie(defaultOpen: boolean): boolean {
-  if (typeof document === "undefined") return defaultOpen
-  const match = document.cookie.match(
-    new RegExp(`(?:^|; )${SIDEBAR_COOKIE_NAME}=([^;]*)`)
-  )
-  if (!match) return defaultOpen
-  return match[1] === "true"
+  const hasDocument = typeof document !== "undefined"
+  // #region agent log
+  if (hasDocument) {
+    const match = document.cookie.match(
+      new RegExp(`(?:^|; )${SIDEBAR_COOKIE_NAME}=([^;]*)`)
+    )
+    const result = !match ? defaultOpen : match[1] === "true"
+    fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',location:'sidebar.tsx:readSidebarCookie',message:'cookie read on client',data:{hasDocument,defaultOpen,cookieRaw:match?.[1]??null,result},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    if (!match) return defaultOpen
+    return match[1] === "true"
+  }
+  // #endregion
+  return defaultOpen
 }
 
 type SidebarContextProps = {
@@ -80,10 +88,19 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(() => readSidebarCookie(defaultOpen))
+  const [_open, _setOpen] = React.useState(defaultOpen)
+
+  // #region agent log
+  const isServer = typeof window === "undefined"
+  fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',runId:'post-fix',location:'sidebar.tsx:SidebarProvider',message:'provider render',data:{isServer,defaultOpen,_open,openProp,isMobile,state:_open?'expanded':'collapsed'},timestamp:Date.now(),hypothesisId:'H1-H2'})}).catch(()=>{});
+  // #endregion
 
   React.useEffect(() => {
-    _setOpen(readSidebarCookie(defaultOpen))
+    const cookieOpen = readSidebarCookie(defaultOpen)
+    // #region agent log
+    fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',location:'sidebar.tsx:SidebarProvider:useEffect',message:'post-mount cookie sync',data:{defaultOpen,cookieOpen,currentOpen:_open},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+    _setOpen(cookieOpen)
   }, [defaultOpen])
   const open = openProp ?? _open
   const setOpen = React.useCallback(
@@ -177,6 +194,12 @@ function Sidebar({
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
+  // #region agent log
+  if (typeof window !== "undefined") {
+    fetch('http://127.0.0.1:7562/ingest/f21b398f-61f0-477a-9350-eb3b2cb8b399',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'951160'},body:JSON.stringify({sessionId:'951160',location:'sidebar.tsx:Sidebar',message:'sidebar render',data:{isMobile,state,collapsible,dataCollapsible:state==='collapsed'?collapsible:''},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+  }
+  // #endregion
+
   if (collapsible === "none") {
     return (
       <div
@@ -243,7 +266,7 @@ function Sidebar({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
@@ -302,7 +325,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:inset-s-1/2 after:w-0.5 hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",

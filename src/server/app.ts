@@ -116,7 +116,12 @@ app.get("/integrations/microsoft/callback", async (c) => {
   try {
     const tokens = await microsoft.exchangeCode(code, redirectUri);
     await upsertConnection(supabase, userId, "microsoft_calendar", tokens);
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Microsoft OAuth callback failed:", message);
+    if (message.includes("AADSTS7000215") || message.includes("Invalid client secret")) {
+      return c.redirect(`${appUrl()}/settings?error=microsoft_secret`);
+    }
     return c.redirect(`${appUrl()}/settings?error=microsoft`);
   }
   return c.redirect(`${appUrl()}/settings?connected=microsoft_calendar`);

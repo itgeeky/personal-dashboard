@@ -89,6 +89,10 @@ export function SettingsClient({
       setMessage(
         "This Azure app is single-tenant, so /common will not work. Set MICROSOFT_TENANT in .env.local to the Directory (tenant) ID from the app Overview page, then restart npm run dev.",
       );
+    } else if (error === "microsoft_secret") {
+      setMessage(
+        "MICROSOFT_CLIENT_SECRET is wrong. In Azure Portal → App registration → Certificates & secrets, copy the secret Value (shown only once when created), not the Secret ID column. Update .env.local and restart npm run dev.",
+      );
     } else if (error === "microsoft") {
       setMessage("Outlook connection failed. Check MICROSOFT_CLIENT_ID, secret, and redirect URI.");
     } else if (error === "jira") {
