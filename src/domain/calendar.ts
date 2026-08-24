@@ -152,3 +152,65 @@ function zonedDateTime(
   );
   return new Date(utcGuess + (desired - actual));
 }
+
+/**
+ * Converts a local wall-clock spec ("YYYY-MM-DD HH:mm", also accepts "T" separator)
+ * into an absolute instant, so callers (including the LLM agent) never have to do
+ * UTC-offset arithmetic themselves — that arithmetic is what produced the
+ * wrong-day/wrong-time bug for evening events crossing the UTC date boundary.
+ */
+export function localDateTimeToIso(value: string, timeZone: string): string {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (!match) {
+    throw new Error(`Formato de fecha/hora inválido: "${value}". Usa "YYYY-MM-DD HH:mm".`);
+  }
+  const [, year, month, day, hour, minute] = match;
+  return zonedDateTime(
+    Number(year),
+    Number(month),
+    Number(day),
+    Number(hour),
+    Number(minute),
+    timeZone,
+  ).toISOString();
+}
+
+export function localTimeLabel(iso: string | Date, timeZone: string): string {
+  const date = typeof iso === "string" ? new Date(iso) : iso;
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+export function localDateLabel(iso: string | Date, timeZone: string): string {
+  const date = typeof iso === "string" ? new Date(iso) : iso;
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(date);
+}
+
+/** Renders an event with explicit local wall-clock fields so the LLM never has to convert UTC itself. */
+export function localizeEvent(event: CalendarEvent, timeZone: string) {
+  return {
+    title: event.title,
+    date: localDateLabel(event.startAt, timeZone),
+    start: event.isAllDay ? "todo el día" : localTimeLabel(event.startAt, timeZone),
+    end: event.isAllDay ? "todo el día" : localTimeLabel(event.endAt, timeZone),
+    location: event.location,
+    source: event.source,
+  };
+}
+
+export function localizeBlock(block: TimeBlock, timeZone: string) {
+  return {
+    start: localTimeLabel(block.startAt, timeZone),
+    end: localTimeLabel(block.endAt, timeZone),
+    minutes: block.minutes,
+  };
+}

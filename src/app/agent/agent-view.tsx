@@ -53,6 +53,27 @@ type ChatMessage = {
   content: string;
 };
 
+type PersistedChat = {
+  messages: ChatMessage[];
+  history: ProviderHistoryItem[];
+};
+
+const STORAGE_PREFIX = "agent-chat:";
+
+function storageKey(email: string | null): string {
+  return `${STORAGE_PREFIX}${email ?? "anon"}`;
+}
+
+/** sessionStorage isn't available during SSR; callers only use this after mount. */
+function loadPersistedChat(email: string | null): PersistedChat | null {
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(email));
+    return raw ? (JSON.parse(raw) as PersistedChat) : null;
+  } catch {
+    return null;
+  }
+}
+
 function Avatar() {
   return (
     <span
@@ -93,9 +114,35 @@ export function AgentView({ email }: { email: string | null }) {
   const [history, setHistory] = useState<ProviderHistoryItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
   const hasConversation = messages.length > 0;
+
+  // Restore any conversation left from before navigating away. Runs client-only
+  // (sessionStorage isn't available during SSR), so it can't be the initial useState value.
+  useEffect(() => {
+    const persisted = loadPersistedChat(email);
+    if (persisted) {
+      setMessages(persisted.messages);
+      setHistory(persisted.history);
+    }
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      if (messages.length === 0) {
+        window.sessionStorage.removeItem(storageKey(email));
+      } else {
+        window.sessionStorage.setItem(storageKey(email), JSON.stringify({ messages, history }));
+      }
+    } catch {
+      // Private-mode / quota errors: chat still works, it just won't survive navigation.
+    }
+  }, [messages, history, restored, email]);
 
   useEffect(() => {
     const node = transcriptRef.current;
@@ -178,7 +225,7 @@ export function AgentView({ email }: { email: string | null }) {
               <div className="text-left">
                 <h1 className="text-lg font-semibold tracking-tight">Agente</h1>
                 <p className="text-xs text-muted-foreground">
-                  Conversación en esta sesión — no se guarda al recargar.
+                  Se conserva al navegar o recargar — se pierde al cerrar esta pestaña.
                 </p>
               </div>
               <button

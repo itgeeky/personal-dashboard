@@ -1,5 +1,6 @@
 import type { ProviderHistoryItem } from "@/domain/agent/types";
 import { getAuth } from "@/lib/current-user";
+import { userTimeZone } from "@/lib/env";
 import { AGENT_SYSTEM_PROMPT } from "@/server/config/systemPrompts";
 import { providers, type ProviderName } from "@/server/services/agent/providers";
 import { runAgent } from "@/server/services/agent/runner";
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   try {
     const result = await runAgent({
       provider,
-      systemPrompt: AGENT_SYSTEM_PROMPT(displayName),
+      systemPrompt: AGENT_SYSTEM_PROMPT(displayName, new Date(), userTimeZone()),
       tools: createAgentTools(supabase, user.id),
       userMessage: body.message,
       history: body.history,

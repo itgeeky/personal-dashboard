@@ -208,6 +208,31 @@ export async function upsertExternalTasks(
   return incoming.length;
 }
 
+export async function snoozeWorkItem(
+  supabase: SupabaseClient,
+  userId: string,
+  id: string,
+  snoozeUntil: string | null,
+) {
+  const { data: current, error: currentError } = await supabase
+    .from("work_items")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (currentError) throw currentError;
+  if (!current) return null;
+
+  const { error } = await supabase.from("work_item_overlays").upsert(
+    { work_item_id: id, user_id: userId, snooze_until: snoozeUntil },
+    { onConflict: "work_item_id" },
+  );
+  if (error) throw error;
+
+  const items = await listWorkItems(supabase, userId);
+  return items.find((item) => item.id === id) ?? null;
+}
+
 export async function deleteManualTask(
   supabase: SupabaseClient,
   userId: string,

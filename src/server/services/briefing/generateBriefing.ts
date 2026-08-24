@@ -3,6 +3,7 @@ import type { DashboardSnapshot } from "@/domain/types";
 import { BRIEFING_SYSTEM_PROMPT } from "@/server/config/systemPrompts";
 import { providers, type ProviderName } from "@/server/services/agent/providers";
 import { complete } from "@/server/services/agent/runner";
+import { describeSnapshotForAgent } from "@/server/services/agent/serialize";
 import { buildDashboard } from "@/server/services/dashboard";
 
 export interface BriefingResult {
@@ -33,7 +34,7 @@ async function synthesizeNarrative(
   const text = await complete({
     provider,
     systemPrompt: BRIEFING_SYSTEM_PROMPT,
-    userMessage: `Genera el briefing del día con este DashboardSnapshot:\n${JSON.stringify(snapshot)}`,
+    userMessage: `Genera el briefing del día con este DashboardSnapshot:\n${JSON.stringify(describeSnapshotForAgent(snapshot))}`,
   });
 
   return text.trim() || "No se pudo generar el resumen del día.";
