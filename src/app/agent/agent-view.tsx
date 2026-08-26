@@ -10,11 +10,12 @@ import {
   Sparkles,
   TicketCheck,
 } from "lucide-react";
-import type { AgentApiError, AgentChatResponse } from "@/domain/agent/api";
+import type { AgentApiError, AgentChatResponse, AgentProviderId } from "@/domain/agent/api";
 import type { ProviderHistoryItem } from "@/domain/agent/types";
 import { displayName, greeting } from "@/lib/display";
 import { cn } from "@/lib/utils";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { ProviderSelect } from "./provider-select";
 
 const promptIdeas = [
   "¿Qué debería hacer primero?",
@@ -59,9 +60,20 @@ type PersistedChat = {
 };
 
 const STORAGE_PREFIX = "agent-chat:";
+const PROVIDER_STORAGE_KEY = "agent-provider";
 
 function storageKey(email: string | null): string {
   return `${STORAGE_PREFIX}${email ?? "anon"}`;
+}
+
+/** localStorage isn't available during SSR; callers only use this after mount. */
+function loadPersistedProvider(): AgentProviderId {
+  try {
+    const raw = window.localStorage.getItem(PROVIDER_STORAGE_KEY);
+    return raw === "gemini" || raw === "openrouter" ? raw : "gemini";
+  } catch {
+    return "gemini";
+  }
 }
 
 /** sessionStorage isn't available during SSR; callers only use this after mount. */
@@ -112,6 +124,7 @@ export function AgentView({ email }: { email: string | null }) {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [history, setHistory] = useState<ProviderHistoryItem[]>([]);
+  const [provider, setProvider] = useState<AgentProviderId>("gemini");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
@@ -120,13 +133,14 @@ export function AgentView({ email }: { email: string | null }) {
   const hasConversation = messages.length > 0;
 
   // Restore any conversation left from before navigating away. Runs client-only
-  // (sessionStorage isn't available during SSR), so it can't be the initial useState value.
+  // (sessionStorage/localStorage aren't available during SSR), so it can't be the initial useState value.
   useEffect(() => {
     const persisted = loadPersistedChat(email);
     if (persisted) {
       setMessages(persisted.messages);
       setHistory(persisted.history);
     }
+    setProvider(loadPersistedProvider());
     setRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -163,7 +177,7 @@ export function AgentView({ email }: { email: string | null }) {
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, history, provider: "gemini" }),
+        body: JSON.stringify({ message, history, provider }),
       });
 
       const body = (await response.json()) as AgentChatResponse | AgentApiError;
@@ -193,6 +207,21 @@ export function AgentView({ email }: { email: string | null }) {
     setHistory([]);
     setPrompt("");
     setError(null);
+  }
+
+  // Cada proveedor guarda el historial en su propio formato opaco, así que
+  // cambiar de modelo reinicia el contexto de la conversación (el modelo pierde
+  // la memoria de turnos previos, aunque el usuario siga viendo la transcripción).
+  function changeProvider(next: AgentProviderId) {
+    if (next === provider) return;
+    setProvider(next);
+    setHistory([]);
+    setError(null);
+    try {
+      window.localStorage.setItem(PROVIDER_STORAGE_KEY, next);
+    } catch {
+      // Private-mode / quota errors: selection still works for this session.
+    }
   }
 
   return (
@@ -299,17 +328,9 @@ export function AgentView({ email }: { email: string | null }) {
               className="w-full resize-none bg-transparent px-4 pt-3 text-sm leading-6 outline-none placeholder:text-muted-foreground disabled:opacity-60"
             />
             <div className="flex items-center justify-between gap-3 px-2 pb-1">
-              <span
-                className={cn(
-                  "ml-1 inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-medium text-brand-foreground ring-1 ring-brand/20",
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn("size-1.5 rounded-full bg-brand-foreground", busy && "animate-pulse")}
-                />
-                {busy ? "Gemini · pensando…" : "Gemini"}
-              </span>
+              <div className="ml-1">
+                <ProviderSelect value={provider} onChange={changeProvider} busy={busy} />
+              </div>
               <button
                 type="submit"
                 disabled={!prompt.trim() || busy}
