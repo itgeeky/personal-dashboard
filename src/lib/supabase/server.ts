@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { fetchWithJwtRetry } from "@/lib/supabase/fetch-with-jwt-retry";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -22,6 +23,7 @@ export async function createClient() {
           }
         },
       },
+      global: { fetch: fetchWithJwtRetry },
     },
   );
 }

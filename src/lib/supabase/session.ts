@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { fetchWithJwtRetry } from "@/lib/supabase/fetch-with-jwt-retry";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -23,6 +24,7 @@ export async function updateSession(request: NextRequest) {
         });
       },
     },
+    global: { fetch: fetchWithJwtRetry },
   });
 
   const {

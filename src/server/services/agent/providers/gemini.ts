@@ -61,7 +61,10 @@ export const geminiProvider: LLMProvider = {
         functionResponse: {
           id: call.id,
           name: call.name,
-          response: typeof result === "object" && result !== null ? result : { output: result },
+          response:
+            typeof result === "object" && result !== null && !Array.isArray(result)
+              ? result
+              : { output: result },
         },
       })),
     });
