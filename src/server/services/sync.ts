@@ -99,6 +99,35 @@ export async function syncJira(supabase: SupabaseClient, userId: string) {
   return { imported, provider: "jira" as const };
 }
 
+export async function syncOutlookMail(supabase: SupabaseClient, userId: string) {
+  const { OutlookMailConnector } = await import("@/server/connectors/outlook-mail");
+  const outlook = new OutlookMailConnector();
+  const stored = await getConnectionTokens(supabase, userId, "outlook");
+  if (!stored) {
+    throw new Error("Outlook Mail is not connected");
+  }
+
+  let tokens = stored.tokens;
+  const stale = !tokens.expiresAt || tokens.expiresAt < Date.now() + 60_000;
+  if (stale) {
+    tokens = await outlook.refresh(tokens);
+    await upsertConnection(supabase, userId, "outlook", tokens);
+  }
+
+  let messages;
+  try {
+    messages = await outlook.listInboxMessages(tokens);
+  } catch {
+    tokens = await outlook.refresh(tokens);
+    await upsertConnection(supabase, userId, "outlook", tokens);
+    messages = await outlook.listInboxMessages(tokens);
+  }
+
+  const imported = await upsertExternalTasks(supabase, userId, "outlook", messages, true);
+  await touchSyncCursor(supabase, userId, "outlook", new Date().toISOString());
+  return { imported, provider: "outlook" as const };
+}
+
 export async function syncZohoDesk(supabase: SupabaseClient, userId: string) {
   const { ZohoDeskConnector } = await import("@/server/connectors/zoho-desk");
   const zoho = new ZohoDeskConnector();

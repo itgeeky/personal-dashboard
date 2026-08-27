@@ -49,4 +49,5 @@ export type NormalizedExternalTask = {
   relatedProject: string | null;
   relatedPerson?: string | null;
   tags: string[];
+  raw?: unknown;
 };

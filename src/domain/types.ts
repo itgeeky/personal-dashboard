@@ -26,6 +26,7 @@ export type WorkItem = {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  raw: unknown | null;
 };
 
 /** Cockpit-only state. Never written back to Jira/Zoho/mail. */
@@ -117,6 +118,7 @@ export type DashboardSnapshot = {
   attention: AttentionItem[];
   pending: WorkItemWithOverlay[];
   waitingFor: WorkItemWithOverlay[];
+  inbox: WorkItemWithOverlay[];
   today: TodayAgenda;
   recommendation: RecommendationItem[];
 };

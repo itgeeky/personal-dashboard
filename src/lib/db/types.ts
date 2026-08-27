@@ -18,6 +18,7 @@ export type WorkItemRow = {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  raw: unknown | null;
 };
 
 export type OverlayRow = {
@@ -66,6 +67,7 @@ export function toWorkItem(row: WorkItemRow): WorkItem {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
+    raw: row.raw,
   };
 }
 

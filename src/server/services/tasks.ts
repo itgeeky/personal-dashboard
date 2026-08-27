@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TaskSource, WorkItemStatus } from "@/domain/enums";
+import { kindForSource } from "@/domain/mapping";
 import type { CreateManualTaskInput } from "@/domain/types";
 import type { NormalizedExternalTask } from "@/server/connectors/types";
 import { mergeItems, type OverlayRow, type WorkItemRow } from "@/lib/db/types";
@@ -164,7 +165,8 @@ export async function upsertExternalTasks(
       related_project: item.relatedProject,
       related_person: item.relatedPerson ?? null,
       tags: item.tags,
-      kind: "task",
+      kind: kindForSource(source),
+      raw: item.raw ?? null,
       completed_at: item.status === "done" || item.status === "cancelled" ? new Date().toISOString() : null,
     };
     if (knownId) {
@@ -231,6 +233,37 @@ export async function snoozeWorkItem(
 
   const items = await listWorkItems(supabase, userId);
   return items.find((item) => item.id === id) ?? null;
+}
+
+export async function ignoreWorkItem(supabase: SupabaseClient, userId: string, id: string) {
+  const { data: current, error: currentError } = await supabase
+    .from("work_items")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (currentError) throw currentError;
+  if (!current) return null;
+
+  const { error } = await supabase.from("work_item_overlays").upsert(
+    { work_item_id: id, user_id: userId, ignored_at: new Date().toISOString() },
+    { onConflict: "work_item_id" },
+  );
+  if (error) throw error;
+  return current;
+}
+
+export async function convertInboxToTask(supabase: SupabaseClient, userId: string, id: string) {
+  const { data, error } = await supabase
+    .from("work_items")
+    .update({ kind: "task", status: "open" })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .eq("kind", "inbox")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 export async function deleteManualTask(

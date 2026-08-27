@@ -51,6 +51,19 @@ export function waitingForTasks(
     .sort(compareUrgency);
 }
 
+export function inboxItems(items: WorkItemWithOverlay[], now: Date): WorkItemWithOverlay[] {
+  return items
+    .filter(
+      (item) =>
+        item.kind === "inbox" &&
+        item.status !== "done" &&
+        item.status !== "cancelled" &&
+        !isIgnored(item) &&
+        !isSnoozed(item, now),
+    )
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
 export function attentionItems(
   items: WorkItemWithOverlay[],
   events: CalendarEvent[],

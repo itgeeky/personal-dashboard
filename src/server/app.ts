@@ -19,8 +19,10 @@ import {
 } from "@/server/services/connections";
 import { buildDashboard } from "@/server/services/dashboard";
 import {
+  convertInboxToTask,
   createManualTask,
   deleteManualTask,
+  ignoreWorkItem,
   listWorkItems,
   updateTask,
 } from "@/server/services/tasks";
@@ -76,6 +78,11 @@ async function zohoDesk() {
 async function githubConnector() {
   const { GitHubConnector } = await import("@/server/connectors/github");
   return new GitHubConnector();
+}
+
+async function outlookMail() {
+  const { OutlookMailConnector } = await import("@/server/connectors/outlook-mail");
+  return new OutlookMailConnector();
 }
 
 app.get("/health", async (c) => {
@@ -248,6 +255,36 @@ app.get("/integrations/github/callback", async (c) => {
   return c.redirect(`${appUrl()}/settings?connected=github`);
 });
 
+app.get("/integrations/outlook/callback", async (c) => {
+  const url = new URL(c.req.url);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const expected = getCookie(c, "oauth_outlook_state");
+  const cookieUser = getCookie(c, "oauth_outlook_user");
+  deleteCookie(c, "oauth_outlook_state", { path: "/" });
+  deleteCookie(c, "oauth_outlook_user", { path: "/" });
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? cookieUser;
+
+  if (!code || !state || !expected || state !== expected || !userId) {
+    return c.redirect(`${appUrl()}/settings?error=outlook`);
+  }
+
+  const outlook = await outlookMail();
+  const redirectUri = `${appUrl()}/api/integrations/outlook/callback`;
+  try {
+    const tokens = await outlook.exchangeCode(code, redirectUri);
+    await upsertConnection(supabase, userId, "outlook", tokens);
+  } catch {
+    return c.redirect(`${appUrl()}/settings?error=outlook`);
+  }
+  return c.redirect(`${appUrl()}/settings?connected=outlook`);
+});
+
 app.use("*", async (c, next) => {
   if (
     c.req.path === "/api/health" ||
@@ -255,7 +292,8 @@ app.use("*", async (c, next) => {
     c.req.path === "/api/integrations/microsoft/callback" ||
     c.req.path === "/api/integrations/jira/callback" ||
     c.req.path === "/api/integrations/zoho/callback" ||
-    c.req.path === "/api/integrations/github/callback"
+    c.req.path === "/api/integrations/github/callback" ||
+    c.req.path === "/api/integrations/outlook/callback"
   ) {
     return next();
   }
@@ -536,6 +574,48 @@ app.get("/github/debug", async (c) => {
 
 app.delete("/connections/github", async (c) => {
   await deleteConnection(c.get("supabase"), c.get("user").id, "github");
+  return c.json({ ok: true });
+});
+
+app.get("/integrations/outlook/start", async (c) => {
+  const state = crypto.randomUUID();
+  const redirectUri = `${appUrl()}/api/integrations/outlook/callback`;
+  setCookie(c, "oauth_outlook_state", state, {
+    httpOnly: true,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 600,
+  });
+  setCookie(c, "oauth_outlook_user", c.get("user").id, {
+    httpOnly: true,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 600,
+  });
+  const outlook = await outlookMail();
+  return c.redirect(outlook.authorizationUrl(redirectUri, state));
+});
+
+app.post("/outlook/sync", async (c) => {
+  const { syncOutlookMail } = await import("@/server/services/sync");
+  const result = await syncOutlookMail(c.get("supabase"), c.get("user").id);
+  return c.json(result);
+});
+
+app.delete("/connections/outlook", async (c) => {
+  await deleteConnection(c.get("supabase"), c.get("user").id, "outlook");
+  return c.json({ ok: true });
+});
+
+app.post("/tasks/:id/ignore", async (c) => {
+  const item = await ignoreWorkItem(c.get("supabase"), c.get("user").id, c.req.param("id"));
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.post("/tasks/:id/convert-to-task", async (c) => {
+  const item = await convertInboxToTask(c.get("supabase"), c.get("user").id, c.req.param("id"));
+  if (!item) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
 });
 

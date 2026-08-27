@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   attentionItems,
+  inboxItems,
   recommendNext,
   pendingTasks,
   waitingForTasks,
@@ -34,6 +35,7 @@ export async function buildDashboard(
     attention: attentionItems(items, events, now, timeZone),
     pending: pendingTasks(items, now),
     waitingFor: waitingForTasks(items, now),
+    inbox: inboxItems(items, now),
     today,
     recommendation: recommendNext(items, events, now, timeZone),
   };

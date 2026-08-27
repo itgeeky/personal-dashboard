@@ -28,9 +28,10 @@ export const implementedProviders: ConnectorProvider[] = [
   "jira",
   "zoho_desk",
   "github",
+  "outlook",
 ];
 
-export const deferredProviders: ConnectorProvider[] = ["outlook", "gitlab"];
+export const deferredProviders: ConnectorProvider[] = ["gitlab"];
 
 export function isImplementedProvider(provider: ConnectorProvider): boolean {
   return implementedProviders.includes(provider);
@@ -103,6 +104,7 @@ export function fromJiraIssue(issue: JiraIssue, userId: string, internalId: stri
     createdAt: issue.fields.created,
     updatedAt: issue.fields.updated,
     completedAt: issue.fields.resolutiondate ?? null,
+    raw: null,
   };
 }
 
@@ -159,6 +161,7 @@ export function fromZohoTicket(ticket: ZohoTicket, userId: string, internalId: s
     createdAt: ticket.createdTime,
     updatedAt: ticket.modifiedTime,
     completedAt: ticket.closedTime ?? null,
+    raw: null,
   };
 }
 

@@ -60,6 +60,7 @@ export function SettingsClient({
   const [githubOAuth, setGitHubOAuth] = useState(githubOAuthConfigured);
   const [githubToken, setGitHubToken] = useState("");
   const [githubBusy, setGitHubBusy] = useState(false);
+  const [outlookBusy, setOutlookBusy] = useState(false);
 
   async function load() {
     const [me, list] = await Promise.all([fetch("/api/me"), fetch("/api/connections")]);
@@ -84,6 +85,7 @@ export function SettingsClient({
     else if (connected === "jira") setMessage("Jira connected.");
     else if (connected === "zoho_desk") setMessage("Zoho Desk connected.");
     else if (connected === "github") setMessage("GitHub connected.");
+    else if (connected === "outlook") setMessage("Outlook Mail connected.");
     else if (connected) setMessage("Connected.");
     if (error === "microsoft_tenant") {
       setMessage(
@@ -101,6 +103,10 @@ export function SettingsClient({
       setMessage("Zoho Desk connection failed. Check ZOHO_CLIENT_ID, secret, region URLs, and redirect URI.");
     } else if (error === "github") {
       setMessage("GitHub connection failed. Check the OAuth app or token permissions.");
+    } else if (error === "outlook") {
+      setMessage(
+        "Outlook Mail connection failed. In Azure Portal, add the Mail.Read delegated permission (with admin consent) and register /api/integrations/outlook/callback as a redirect URI on the app.",
+      );
     } else if (error === "google") {
       setMessage("Google Calendar connection failed. Check OAuth env vars.");
     } else if (error) {
@@ -123,7 +129,7 @@ export function SettingsClient({
   }
 
   async function disconnect(
-    provider: "google_calendar" | "microsoft_calendar" | "jira" | "zoho_desk" | "github",
+    provider: "google_calendar" | "microsoft_calendar" | "jira" | "zoho_desk" | "github" | "outlook",
   ) {
     const label = providerLabels[provider] ?? provider;
     if (!window.confirm(`Disconnect ${label}? Stored tokens are deleted.`)) return;
@@ -219,11 +225,26 @@ export function SettingsClient({
     await load();
   }
 
+  async function syncOutlook() {
+    setOutlookBusy(true);
+    setMessage(null);
+    const response = await fetch("/api/outlook/sync", { method: "POST" });
+    setOutlookBusy(false);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setMessage(body.error ?? "Outlook Mail sync failed.");
+      return;
+    }
+    const body = await response.json();
+    setMessage(`Imported ${body.imported} Outlook messages.`);
+  }
+
   const google = connections.find((item) => item.provider === "google_calendar");
   const outlook = connections.find((item) => item.provider === "microsoft_calendar");
   const jira = connections.find((item) => item.provider === "jira");
   const zoho = connections.find((item) => item.provider === "zoho_desk");
   const github = connections.find((item) => item.provider === "github");
+  const outlookMail = connections.find((item) => item.provider === "outlook");
 
   return (
     <>
@@ -502,6 +523,59 @@ export function SettingsClient({
         </Panel>
 
         <Panel>
+          <PanelHeader
+            title="Outlook Mail"
+            subtitle="Unread Focused-inbox mail plus your Kiva folder. Read-only, other/clutter mail is skipped."
+            trailing={
+              outlookMail ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-brand-foreground">
+                  <Check className="size-3" aria-hidden="true" />
+                  Connected
+                </span>
+              ) : (
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  Not connected
+                </span>
+              )
+            }
+          />
+          {outlookMail ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={syncOutlook}
+                disabled={outlookBusy}
+                className={syncButtonClass}
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  className={cn("size-4", outlookBusy && "animate-spin motion-reduce:animate-none")}
+                />
+                {outlookBusy ? "Syncing…" : "Sync Outlook Mail"}
+              </button>
+              <button
+                type="button"
+                onClick={() => disconnect("outlook")}
+                className={secondaryButtonClass}
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <a href="/api/integrations/outlook/start" className={connectLinkClass}>
+                Connect Outlook Mail
+              </a>
+              <EmptyHint>
+                Same Azure app as Outlook Calendar. In Azure Portal, add the Mail.Read delegated
+                permission with admin consent, and register /api/integrations/outlook/callback as a
+                redirect URI.
+              </EmptyHint>
+            </div>
+          )}
+        </Panel>
+
+        <Panel>
           <PanelHeader title="Sources" subtitle="What is live and what is queued" />
           <div className="grid gap-2">
             {implementedProviders.map((provider) => (
@@ -512,7 +586,7 @@ export function SettingsClient({
                 <span className="min-w-0 truncate text-sm font-medium">
                   {providerLabels[provider] ?? provider}
                 </span>
-                <span className="shrink-0 text-xs text-brand-foreground">Live</span>
+                <span className="shrink-0 text-xs font-medium text-brand-accent">Live</span>
               </div>
             ))}
             {deferredProviders.map((provider) => (
