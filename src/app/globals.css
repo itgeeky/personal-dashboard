@@ -10,6 +10,7 @@
   --color-surface: var(--surface);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-accent: var(--brand-accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-sans);
   --font-heading: var(--font-sans);
@@ -58,6 +59,7 @@
   --surface: oklch(0.965 0.003 264);
   --brand: oklch(0.87 0.21 128);
   --brand-foreground: oklch(0.24 0.05 128);
+  --brand-accent: oklch(0.24 0.05 128);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -97,6 +99,7 @@
   --surface: oklch(0.16 0 0);
   --brand: oklch(0.83 0.2 128);
   --brand-foreground: oklch(0.2 0.05 128);
+  --brand-accent: oklch(0.83 0.2 128);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);

@@ -316,7 +316,7 @@ export function DashboardView({
                         "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
                         item.reason === "overdue"
                           ? "bg-destructive/10 text-destructive"
-                          : "bg-brand/25 text-brand-foreground",
+                          : "bg-brand/25 text-brand-accent",
                       )}
                     >
                       {reasonLabel(item.reason)}

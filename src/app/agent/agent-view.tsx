@@ -301,12 +301,12 @@ export function AgentView({ email }: { email: string | null }) {
             <div className="flex items-center justify-between gap-3 px-2 pb-1">
               <span
                 className={cn(
-                  "ml-1 inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-medium text-brand-foreground ring-1 ring-brand/20",
+                  "ml-1 inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-medium text-brand-accent ring-1 ring-brand/20",
                 )}
               >
                 <span
                   aria-hidden="true"
-                  className={cn("size-1.5 rounded-full bg-brand-foreground", busy && "animate-pulse")}
+                  className={cn("size-1.5 rounded-full bg-brand-accent", busy && "animate-pulse")}
                 />
                 {busy ? "Gemini · pensando…" : "Gemini"}
               </span>
@@ -398,7 +398,7 @@ export function AgentView({ email }: { email: string | null }) {
                   >
                     <capability.icon className="size-4" />
                   </span>
-                  <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-semibold text-brand-foreground">
+                  <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-semibold text-brand-accent">
                     {capability.live ? "Live" : "Later"}
                   </span>
                 </div>

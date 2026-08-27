@@ -56,7 +56,6 @@ Potential future providers:
 * DeepSeek
 * Kimi
 * Qwen
-* OpenRouter
 * Other compatible providers
 
 ---
