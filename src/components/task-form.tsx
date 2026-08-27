@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { workItemPriorities, workItemStatuses } from "@/domain/enums";
@@ -191,10 +192,9 @@ export function TaskForm({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Due">
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={form.dueAt}
-                onChange={(e) => setForm({ ...form, dueAt: e.target.value })}
+                onChange={(value) => setForm({ ...form, dueAt: value })}
               />
             </Field>
             <Field label="Estimate (minutes)">
@@ -243,10 +243,9 @@ export function TaskForm({
             />
           </Field>
           <Field label="Reminder">
-            <Input
-              type="datetime-local"
+            <DateTimePicker
               value={form.reminderAt}
-              onChange={(e) => setForm({ ...form, reminderAt: e.target.value })}
+              onChange={(value) => setForm({ ...form, reminderAt: value })}
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
