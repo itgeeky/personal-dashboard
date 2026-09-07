@@ -17,6 +17,31 @@ import { describeSnapshotForAgent } from "@/server/services/agent/serialize";
 import { createManualTask, listWorkItems, snoozeWorkItem } from "@/server/services/tasks";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
+const INBOX_LIMIT = 20;
+const PRIORITY_RANK: Record<WorkItemPriority, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  urgent: 4,
+};
+
+/** Caps inbox (untriaged mail) items to the most important + most recent, to avoid dumping the whole unread inbox on the agent. Non-inbox items pass through untouched. */
+function capInbox<T extends { kind: string; priority: WorkItemPriority; createdAt: string }>(
+  items: T[],
+  limit: number,
+): T[] {
+  const inbox = items
+    .filter((item) => item.kind === "inbox")
+    .sort((a, b) => {
+      const byPriority = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
+      if (byPriority !== 0) return byPriority;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    })
+    .slice(0, limit);
+  const rest = items.filter((item) => item.kind !== "inbox");
+  return [...rest, ...inbox];
+}
 
 /** Parses an optional local "YYYY-MM-DD HH:mm" arg into a UTC ISO string, or null. */
 function optionalLocalDateTime(value: unknown, timeZone: string): string | null {
@@ -42,17 +67,22 @@ export function createAgentTools(supabase: SupabaseClient, userId: string): Tool
     {
       name: "list_work_items",
       description:
-        "Lista tareas sincronizadas desde Jira, Zoho Desk, GitHub o captura manual. El estado de fuentes externas solo cambia al sincronizar desde la fuente (Settings).",
+        "Lista tareas sincronizadas desde Jira, Zoho Desk, GitHub o captura manual. Por default NO incluye el inbox de correo (Outlook): esos items son mensajes sin triar (asunto, remitente y preview del cuerpo). Pasa includeInbox=true o source='outlook' solo si el usuario pidió explícitamente revisar o resumir su correo; en ese caso se devuelven como máximo los 20 correos más importantes (por importance) y recientes, no todo el inbox. El estado de fuentes externas solo cambia al sincronizar desde la fuente (Settings).",
       parameters: {
         type: "object",
         properties: {
           source: {
             type: "string",
-            description: "Fuente: jira, zoho_desk, github, manual",
+            description: "Fuente: jira, zoho_desk, github, outlook, manual",
           },
           status: {
             type: "string",
             description: "Estado: open, in_progress, waiting_for, done, cancelled",
+          },
+          includeInbox: {
+            type: "boolean",
+            description:
+              "Incluir items kind='inbox' (correo de Outlook sin triar). Default false salvo que source='outlook'.",
           },
         },
       },
@@ -60,6 +90,10 @@ export function createAgentTools(supabase: SupabaseClient, userId: string): Tool
         let items = await listWorkItems(supabase, userId);
         const source = args.source as TaskSource | undefined;
         const status = args.status as WorkItemStatus | undefined;
+        const includeInbox = args.includeInbox === true || source === "outlook";
+        items = includeInbox
+          ? capInbox(items, INBOX_LIMIT)
+          : items.filter((item) => item.kind !== "inbox");
         if (source) items = items.filter((item) => item.source === source);
         if (status) items = items.filter((item) => item.status === status);
         return items;
